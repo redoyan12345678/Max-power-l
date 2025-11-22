@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earning App - Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Firebase SDKs যুক্ত করা হয়েছে -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
+    <style>
+        /* CSS কোড: UI কিউটনেস */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Noto Sans Bengali";
+            background-color: #fce4ec; /* হালকা পিংক ব্যাকগ্রাউন্ড */
+            margin: 0; padding: 20px;
+        }
+        .container {
+            max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 15px rgba(255, 105, 180, 0.3); /* পিংকিশ শ্যাডো */
+        }
+        h2 {
+            color: #ff69b4; border-bottom: 2px solid #ff69b4; padding-bottom: 10px; margin-top: 0;
+        }
+        .nav-tabs {
+            display: flex; border-bottom: 1px solid #ff69b4; margin-bottom: 20px;
+        }
+        .nav-tab {
+            padding: 10px 15px; cursor: pointer; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; color: #666; font-weight: 500;
+        }
+        .nav-tab.active {
+            border-color: #ff69b4 #ff69b4 white #ff69b4; color: #ff69b4; border-top-left-radius: 5px; border-top-right-radius: 5px;
+            background-color: #fff0f5; /* হালকা পিংক ব্যাকগ্রাউন্ড */
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        table {
+            width: 100%; border-collapse: collapse; margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #eee; padding: 10px; text-align: left; font-size: 14px;
+        }
+        th {
+            background-color: #ff69b4; color: white;
+        }
+        .btn-approve {
+            background-color: #5cb85c; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-right: 5px;
+        }
+        .btn-reject {
+            background-color: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block; margin-bottom: 5px; font-weight: bold;
+        }
+        .input-group input {
+            width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ddd; box-sizing: border-box;
+        }
+        .btn-save {
+            background-color: #ff69b4; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- সরলীকৃত লগইন ফর্ম (প্রোটোটাইপের জন্য) -->
+<div id="login-form" class="container" style="display: none;">
+    <h2>Admin Login</h2>
+    <div class="input-group">
+        <label for="admin-pass">Password</label>
+        <input type="password" id="admin-pass" placeholder="Enter Admin Password">
+    </div>
+    <button class="btn-save" onclick="adminLogin()">Login</button>
+</div>
+
+<div id="admin-panel" class="container" style="display: none;">
+    <h2>Admin Dashboard</h2>
+
+    <div class="nav-tabs">
+        <div class="nav-tab active" data-tab="users" onclick="showAdminTab('users', this)">Users</div>
+        <div class="nav-tab" data-tab="activation" onclick="showAdminTab('activation', this)">Activation Requests</div>
+        <div class="nav-tab" data-tab="withdrawal" onclick="showAdminTab('withdrawal', this)">Withdrawal Requests</div>
+        <div class="nav-tab" data-tab="settings" onclick="showAdminTab('settings', this)">Settings</div>
+    </div>
+
+    <!-- Users Section -->
+    <div id="users-section" class="content-section active">
+        <h3>Total Users: <span id="user-count">0</span></h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Ref Code</th>
+                    <th>Status</th>
+                    <th>Balance</th>
+                    <th>Referrals</th>
+                </tr>
+            </thead>
+            <tbody id="user-list">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Activation Requests Section -->
+    <div id="activation-section" class="content-section">
+        <h3>Pending Activation Requests</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Sender No.</th>
+                    <th>TrxID</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="activation-list">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Withdrawal Requests Section -->
+    <div id="withdrawal-section" class="content-section">
+        <h3>Pending Withdrawal Requests</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Amount</th>
+                    <th>Account No.</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="withdrawal-list">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Settings Section -->
+    <div id="settings-section" class="content-section">
+        <h3>Payment Settings</h3>
+        <div class="input-group">
+            <label for="bkash-number-input">Bkash/Nagad Payment Number</label>
+            <input type="text" id="bkash-number-input" placeholder="017XXXXXXXX">
+        </div>
+        <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
+</div>
+
+<script>
+    // আপনার দেওয়া Firebase কনফিগারেশন
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKR2KyLhJoB_qdMBpoJN5raBWDCRDEonE",
+      authDomain: "earning-7bc45.firebaseapp.com",
+      databaseURL: "https://earning-7bc45-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "earning-7bc45",
+      storageBucket: "earning-7bc45.firebasestorage.app",
+      messagingSenderId: "94413359022",
+      appId: "1:94413359022:web:db5b84117334175c7f2a3f"
+    };
+
+    // Firebase Initialize
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = app.database();
+
+    // কমিশনের কাঠামো
+    const COMMISSION_LEVELS = [
+        { level: 1, amount: 80, count: 1 },
+        { level: 2, amount: 35, count: 1 },
+        { level: 3, amount: 25, count: 1 },
+        { level: 4, amount: 15, count: 1 },
+        { level: 5, amount: 10, count: 1 },
+        { level: 6, amount: 3, count: 10 },
+        { level: 16, amount: 2, count: 20 }
+    ];
+    
+    // ====================================================================
+    // ১. Admin Authentication
+    // ====================================================================
+    const ADMIN_PASSWORD = "@redoyanRR334t";
+
+    function adminLogin() {
+        const password = document.getElementById('admin-pass').value;
+        if (password === ADMIN_PASSWORD) {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+            loadAdminData();
+        } else {
+            alert("Incorrect Admin Password.");
+        }
+    }
+    
+    // ফিক্স: DOMContentLoaded-এ চেক করা যে ইউজার পাসওয়ার্ড দিয়েছে কিনা
+    document.addEventListener('DOMContentLoaded', () => {
+        // সহজ পাসওয়ার্ড চেক (ইনসিকিউর, কিন্তু আপনার প্রয়োজন)
+        if (window.location.hash === '#admin_authed') {
+             document.getElementById('login-form').style.display = 'none';
+             document.getElementById('admin-panel').style.display = 'block';
+             loadAdminData();
+        } else {
+             document.getElementById('login-form').style.display = 'block';
+        }
+    });
+    
+    // লগইন সফল হলে রিডাইরেক্ট ফাংশন
+    function adminLogin() {
+        const password = document.getElementById('admin-pass').value;
+        if (password === ADMIN_PASSWORD) {
+            // পাসওয়ার্ড সঠিক হলে URL-এ একটি হ্যাশ যুক্ত করে রিডাইরেক্ট করা
+            window.location.href = window.location.origin + window.location.pathname + '#admin_authed';
+        } else {
+            alert("Incorrect Admin Password.");
+        }
+    }
+
+    // ====================================================================
+    // ২. ডেটা লোডিং ফাংশন (রিয়েলটাইম)
+    // ====================================================================
+
+    function loadAdminData() {
+        db.ref('activation_requests').on('value', loadActivationRequests);
+        db.ref('withdrawal_requests').on('value', loadWithdrawalRequests);
+        db.ref('users').on('value', loadUsers);
+        
+        db.ref('settings/bkashPaymentNumber').once('value', snapshot => {
+            document.getElementById('bkash-number-input').value = snapshot.val() || '';
+        });
+    }
+    
+    function loadUsers(snapshot) {
+        const users = snapshot.val() || {};
+        const userList = document.getElementById('user-list');
+        let html = '';
+        let count = 0;
+        
+        for (const uid in users) {
+            const user = users[uid];
+            count++;
+            const balance = user.balance || 0; 
+            
+            html += `
+                <tr>
+                    <td>${uid.substring(0, 8)}</td>
+                    <td>${user.referralCode || 'N/A'}</td>
+                    <td style="color: ${user.isActivated ? 'green' : 'orange'};">${user.isActivated ? 'Active' : 'Inactive'}</td>
+                    <td>৳${balance.toFixed(2)}</td>
+                    <td>${user.totalReferrals || 0}</td>
+                </tr>
+            `;
+        }
+        
+        document.getElementById('user-count').innerText = count;
+        userList.innerHTML = html;
+    }
+
+    function loadActivationRequests(snapshot) {
+        const requests = snapshot.val() || {};
+        const requestList = document.getElementById('activation-list');
+        let html = '';
+
+        for (const reqId in requests) {
+            const req = requests[reqId];
+            if (req.status === 'Pending') {
+                html += `
+                    <tr>
+                        <td>${req.userId.substring(0, 8)}</td>
+                        <td>${req.senderNumber}</td>
+                        <td>${req.trxId}</td>
+                        <td>
+                            <button class="btn-approve" onclick="approveActivation('${reqId}', '${req.userId}')">Approve</button>
+                            <button class="btn-reject" onclick="rejectRequest('activation_requests', '${reqId}')">Reject</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        requestList.innerHTML = html || '<tr><td colspan="4">No pending activation requests.</td></tr>';
+    }
+
+    function loadWithdrawalRequests(snapshot) {
+        const requests = snapshot.val() || {};
+        const requestList = document.getElementById('withdrawal-list');
+        let html = '';
+
+        for (const reqId in requests) {
+            const req = requests[reqId];
+            if (req.status === 'Pending') {
+                html += `
+                    <tr>
+                        <td>${req.userId.substring(0, 8)}</td>
+                        <td>৳${(req.amount || 0).toFixed(2)}</td>
+                        <td>${req.accountNumber}</td>
+                        <td>
+                            <button class="btn-approve" onclick="approveWithdrawal('${reqId}', '${req.userId}', ${req.amount})">Approve</button>
+                            <button class="btn-reject" onclick="rejectRequest('withdrawal_requests', '${reqId}')">Reject</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+        requestList.innerHTML = html || '<tr><td colspan="4">No pending withdrawal requests.</td></tr>';
+    }
+    
+    // ====================================================================
+    // ৩. Action Functions
+    // ====================================================================
+
+    function showAdminTab(tabName, element) {
+        document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+        document.getElementById(`${tabName}-section`).classList.add('active');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    function rejectRequest(path, reqId) {
+        if (confirm("Are you sure you want to reject this request?")) {
+            db.ref(`${path}/${reqId}`).update({ status: 'Rejected' })
+                .then(() => alert("Request rejected successfully."))
+                .catch(error => alert("Error: " + error.message));
+        }
+    }
+
+    function saveSettings() {
+        const number = document.getElementById('bkash-number-input').value.trim();
+        if (number.length < 10) {
+            alert("Please enter a valid payment number.");
+            return;
+        }
+        db.ref('settings/bkashPaymentNumber').set(number)
+            .then(() => alert("Payment Number updated successfully!"))
+            .catch(error => alert("Error saving settings: " + error.message));
+    }
+
+    function approveWithdrawal(reqId, userId, amount) {
+        if (!confirm(`Approve withdrawal of ৳${amount} for user ${userId.substring(0, 8)}?`)) return;
+
+        const updates = {};
+        updates[`withdrawal_requests/${reqId}/status`] = 'Approved';
+        
+        db.ref(`users/${userId}/balance`).transaction(currentBalance => {
+            if (currentBalance === null) return 0;
+            return Math.max(0, currentBalance - amount); 
+        }).then(() => {
+            db.ref().update(updates)
+                .then(() => alert(`Withdrawal ৳${amount} approved and deducted from user's balance.`))
+                .catch(error => alert("Error finalizing approval: " + error.message));
+        }).catch(error => {
+            alert("Error deducting balance: " + error.message);
+        });
+    }
+
+    // ====================================================================
+    // ৪. Activation & Commission Distribution (The core logic)
+    // ====================================================================
+
+    async function approveActivation(reqId, newUserId) {
+        if (!confirm(`Approve activation for user ${newUserId.substring(0, 8)}? This will activate the account and distribute commissions.`)) return;
+
+        try {
+            const newUserSnapshot = await db.ref(`users/${newUserId}`).once('value');
+            const newUserData = newUserSnapshot.val();
+            
+            if (newUserData.isActivated) {
+                alert("Error: User is already active!");
+                return;
+            }
+
+            let currentRefId = newUserData.referredBy;
+            let level = 1;
+            const updates = {};
+            let totalDistributed = 0;
+            
+            updates[`users/${newUserId}/isActivated`] = true;
+
+            for (const commission of COMMISSION_LEVELS) {
+                for (let i = 0; i < commission.count; i++) {
+                    if (currentRefId) {
+                        const refUserSnapshot = await db.ref(`users/${currentRefId}`).once('value');
+                        const refUser = refUserSnapshot.val();
+
+                        if (refUser && refUser.isActivated) {
+                            const amount = commission.amount;
+                            updates[`users/${currentRefId}/balance`] = (refUser.balance || 0) + amount;
+                            
+                            if (level === 1) {
+                                updates[`users/${currentRefId}/totalReferrals`] = (refUser.totalReferrals || 0) + 1;
+                            }
+                            
+                            totalDistributed += amount;
+                        }
+
+                        updates[`users/${currentRefId}/totalDownlines`] = ((refUser ? refUser.totalDownlines : 0) || 0) + 1;
+
+                        currentRefId = refUser ? refUser.referredBy : null;
+                        level++;
+                    }
+                }
+            }
+
+            updates[`activation_requests/${reqId}/status`] = 'Approved';
+            await db.ref().update(updates);
+
+            alert(`Activation successful. Commission ৳${totalDistributed.toFixed(2)} distributed to ${level - 1} levels.`);
+
+        } catch (error) {
+            console.error("Activation/Commission Error:", error);
+            alert("An error occurred during commission distribution: " + error.message);
+        }
+    }
+</script>
+
+</body>
+</html>
