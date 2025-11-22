@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earning App - User Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Firebase SDKs যুক্ত করা হয়েছে -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
+    <style>
+        /* CSS কোড: UI ফিক্সড */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Noto Sans Bengali";
+            background-color: #fce4ec;
+            margin: 0; padding: 0; display: flex; justify-content: center; min-height: 100vh;
+        }
+        .mobile-container {
+            width: 100%; max-width: 450px; background-color: white; box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); overflow: hidden; display: flex; flex-direction: column; min-height: 100vh;
+        }
+        .main-content {
+            flex-grow: 1; overflow-y: auto; padding: 0 15px 15px 15px; padding-top: 15px;
+        }
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: block;
+        }
+        .card {
+            background-color: white; border-radius: 20px; 
+            margin-top: 15px; padding: 20px; box-shadow: 0 6px 12px rgba(255, 105, 180, 0.3);
+        }
+        .balance-card {
+            background: linear-gradient(135deg, #ff69b4, #8a2be2); 
+            color: white; padding: 25px; text-align: left; position: relative;
+        }
+        .balance-card h4 {
+            margin: 0 0 5px 0; font-weight: 400; font-size: 16px;
+        }
+        .balance-card .amount {
+            font-size: 40px; font-weight: bold; margin-bottom: 10px;
+        }
+        .balance-card button {
+            background-color: #f0f8ff; color: #ff69b4;
+            border: none; padding: 8px 15px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: all 0.3s;
+        }
+        .card-icon {
+            position: absolute; top: 25px; right: 25px; font-size: 28px;
+        }
+        .refer-card {
+            background-color: #fff0f5; 
+            display: flex; justify-content: space-between; align-items: center; border: 2px dashed #ff69b4;
+        }
+        .refer-card button {
+            background-color: #ff69b4; color: white;
+        }
+        .stat-item {
+            box-shadow: 0 2px 4px rgba(255, 105, 180, 0.1);
+        }
+        .downline-item .count {
+            color: #ff69b4;
+        }
+        .footer-nav {
+            display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #ffc0cb; background-color: white; width: 100%; max-width: 450px; position: sticky; bottom: 0; box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.03);
+        }
+        .nav-item {
+            text-align: center; color: #999; font-size: 12px; cursor: pointer; width: 25%;
+        }
+        .nav-item i {
+            font-size: 20px; margin-bottom: 4px; color: #ccc;
+        }
+        .nav-item.active i, .nav-item.active span {
+            color: #ff69b4;
+        }
+        .withdraw-section button.primary {
+            background-color: #ff69b4; 
+            color: white;
+        }
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); 
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 15px; max-width: 90%; width: 350px; text-align: center; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .modal-content h4 {
+            color: #ff69b4;
+        }
+        .modal-content input {
+             width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box;
+        }
+        .modal-submit-btn {
+            background-color: #ff69b4;
+        }
+        .bkash-number {
+            border-color: #ff69b4;
+        }
+        .admin-access-btn {
+            font-size: 18px; color: #fff; background: rgba(255, 255, 255, 0.2); border-radius: 50%; width: 30px; height: 30px; display: inline-flex; justify-content: center; align-items: center; margin-left: 10px; cursor: pointer;
+        }
+        .r-modal-text {
+            color: #ff69b4; font-weight: bold; margin-bottom: 15px;
+        }
+        .login-buttons button {
+            background-color: #ff69b4; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: bold; width: 48%; cursor: pointer;
+        }
+        .login-buttons {
+            display: flex; justify-content: space-between;
+        }
+        #create-account-form {
+            display: none;
+        }
+        #login-or-create-modal .modal-content {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="mobile-container">
+    
+    <!-- মেইন কনটেন্ট এরিয়া -->
+    <div class="main-content">
+        
+        <!-- ======================= 1. HOME SCREEN ======================= -->
+        <div id="home-screen" class="screen active">
+            <!-- Wallet Card (Home) -->
+            <div class="card balance-card">
+                <i class="fas fa-wallet card-icon"></i>
+                <h4 id="user-welcome">Welcome back, User</h4>
+                <div style="display: flex; align-items: center;">
+                    <span class="amount" id="home-balance">৳0.00</span>
+                </div>
+                <div class="status">
+                    <span id="activation-status-dot" style="color: #ffcc00; margin-right: 5px;">&#9679;</span>
+                    <span id="activation-status-text">Inactive</span>
+                    <span style="margin-left: 10px;">UID: <span id="user-uid">Loading...</span></span>
+                </div>
+                <button id="activate-btn" onclick="openActivationModal()">
+                    <i class="fas fa-bolt"></i> Activate (৳300)
+                </button>
+            </div>
+
+            <!-- Refer & Earn -->
+            <div class="card refer-card">
+                <div>
+                    <h4 style="margin: 0; color: #333;">Your Referral Code</h4>
+                    <p style="font-size: 16px; font-weight: bold; color: #ff69b4; margin: 5px 0 0 0;" id="ref-code">Loading...</p>
+                </div>
+                <button onclick="copyReferralLink()">Sharing</button>
+            </div>
+            
+            <!-- Income/Referral Stats -->
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <i class="fas fa-trophy" style="color: #5cb85c;"></i>
+                    <h5 style="margin: 5px 0;">Total Income</h5>
+                    <p style="font-weight: bold; margin: 0;" id="total-income">৳0.00</p>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-chart-line" style="color: #ff69b4;"></i>
+                    <h5 style="margin: 5px 0;">Pending</h5>
+                    <p style="font-weight: bold; margin: 0;">৳0.00</p>
+                </div>
+            </div>
+            
+            <!-- Link Your Upline (এখন লগইন মোডালে সরানো হয়েছে) -->
+            <h4 style="margin-top: 20px; color: #333;">
+                Recent Activity
+            </h4>
+            <ul style="list-style: none; padding: 0;" id="recent-activity">
+                <li style="font-size: 14px; color: #888; padding: 10px 0;">No recent activity.</li>
+            </ul>
+        </div>
+        
+        <!-- ======================= 2. WALLET SCREEN ======================= -->
+        <div id="wallet-screen" class="screen">
+            <h3 style="color: #ff69b4;"><i class="fas fa-wallet"></i> Wallet & Withdrawal</h3>
+            
+            <!-- Wallet Card (Wallet) - R বাটন এখানে যুক্ত করা হয়েছে -->
+            <div class="card balance-card">
+                <i class="fas fa-dollar-sign card-icon"></i>
+                <h4 style="font-size: 16px;">Current Balance</h4>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span class="amount" id="wallet-balance">৳0.00</span>
+                    <!-- R-Access বাটন এখানে যুক্ত করা হয়েছে -->
+                    <span class="admin-access-btn" onclick="openAdminAccessModal()">R</span>
+                </div>
+                <p style="font-size: 12px; margin: 0;">(Minimum Withdrawal: ৳150)</p>
+            </div>
+
+            <div class="card withdraw-section">
+                <h4 style="margin-top: 0; color: #333;">Withdrawal Request</h4>
+                <input type="number" id="withdraw-amount" placeholder="Withdrawal Amount (Min 150)" required>
+                <input type="text" id="withdraw-number" placeholder="Bkash/Nagad Number" required>
+                <button class="primary" onclick="submitWithdrawalRequest()">Request Withdrawal</button>
+                <p style="font-size: 12px; color: #888; text-align: center; margin: 0;">Processing fee may apply.</p>
+            </div>
+            
+            <div class="card">
+                <h4 style="margin-top: 0; color: #333;">Withdrawal History</h4>
+                <ul style="list-style: none; padding: 0; margin: 0;" id="withdrawal-history">
+                    <li style="font-size: 14px; color: #888; padding: 10px 0;">No withdrawal history.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ======================= 3. PEOPLE SCREEN ======================= -->
+        <div id="people-screen" class="screen">
+            <h3 style="color: #ff69b4;"><i class="fas fa-user-friends"></i> Downline Network</h3>
+
+            <div class="card profile-summary">
+                <i class="fas fa-user-circle" style="font-size: 40px; color: #ff69b4;"></i>
+                <h4>Network Stats</h4>
+            </div>
+            
+            <div class="downline-stats">
+                <div class="downline-item">
+                    <div class="count" id="total-referrals">0</div>
+                    <div class="label">Total Referrals</div>
+                </div>
+                <div class="downline-item">
+                    <div class="count" id="total-downlines">0</div>
+                    <div class="label">Total Downlines</div>
+                </div>
+                <div class="downline-item">
+                    <div class="count" id="downline-balance">৳0.00</div>
+                    <div class="label">Downline Balance</div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 20px;">
+                <h4 style="margin-top: 0; color: #333;">Downline List</h4>
+                <ul style="list-style: none; padding: 0; margin: 0;" id="downline-list">
+                    <li style="font-size: 14px; color: #888; padding: 10px 0;">No downlines yet.</li>
+                </ul>
+            </div>
+        </div>
+
+
+        <!-- ======================= 4. PLAN SCREEN - Income Logic ======================= -->
+         <div id="plan-screen" class="screen">
+            <div class="card income-logic" style="margin-top: 0;">
+                <h3><i class="fas fa-chart-line"></i> Income Logic</h3>
+                <div style="background-color: #fff0f5; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <span>Activation Cost</span>
+                    <span style="font-size: 28px; font-weight: bold; color: #ff69b4; float: right;">৳300</span>
+                    <div style="clear: both;"></div>
+                    <p style="font-size: 14px; color: #666; margin: 5px 0 0 0;">300 Taka is distributed to the uplines according to your custom chart below.</p>
+                </div>
+                <div class="level-list">
+                    <div class="level-item"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">1</span><span>DIRECT REFERRAL</span></div><div style="display: flex; align-items: center;"><span class="level-amount">Receives ৳80</span><span class="you-tag" style="background-color: #5cb85c; color: white; padding: 2px 8px; border-radius: 5px; font-size: 12px; margin-left: 10px;">YOU</span></div></div>
+                    <div class="level-item"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">2</span><span>1ST LEVEL UPLINE</span></div><span class="level-amount">Receives ৳35</span></div>
+                    <div class="level-item"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">3</span><span>2ND LEVEL UPLINE</span></div><span class="level-amount">Receives ৳25</span></div>
+                    <div class="level-item"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">4</span><span>3RD LEVEL UPLINE</span></div><span class="level-amount">Receives ৳15</span></div>
+                    <div class="level-item"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">5</span><span>4TH LEVEL UPLINE</span></div><span class="level-amount">Receives ৳10</span></div>
+                    <div class="level-item"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">6-15</span><span>NEXT 10 UPLINES (৳3 x 10)</span></div><span class="level-amount">Receives ৳3 Each</span></div>
+                    <div class="level-item" style="border-bottom: none;"><div class="level-info"><span class="level-number" style="background-color: #ff69b4;">16-35</span><span>NEXT 20 UPLINES (৳2 x 20)</span></div><span class="level-amount">Receives ৳2 Each</span></div>
+                    <p style="font-size: 12px; color: #888; text-align: right; margin-top: 10px;">Total Distributed: ৳235.00</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ফুটার নেভিগেশন -->
+    <div class="footer-nav">
+        <div class="nav-item active" onclick="showScreen('home-screen', this)">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="showScreen('wallet-screen', this)">
+            <i class="fas fa-wallet"></i>
+            <span>Wallet</span>
+        </div>
+        <div class="nav-item" onclick="showScreen('people-screen', this)">
+            <i class="fas fa-user-friends"></i>
+            <span>People</span>
+        </div>
+        <div class="nav-item" onclick="showScreen('plan-screen', this)">
+            <i class="fas fa-chart-line"></i>
+            <span>Plan</span>
+        </div>
+    </div>
+</div>
+
+<!-- ========================= MODALS ========================= -->
+
+<!-- Login or Create Account Modal (নতুন লগইন ফ্লো) -->
+<div id="login-or-create-modal" class="modal">
+    <div class="modal-content">
+        <h4 id="login-header" style="border-bottom: 2px solid #ddd; padding-bottom: 10px; color: #ff69b4;">Welcome Back!</h4>
+        
+        <!-- Login Form -->
+        <div id="login-form">
+            <p class="r-modal-text">Enter Passcode to Login</p>
+            <input type="password" id="login-passcode" placeholder="Enter Your Passcode" required>
+            <button class="modal-submit-btn" style="width: 100%; margin-bottom: 15px;" onclick="handleLogin()">Login</button>
+            <a href="#" onclick="showCreateAccount()" style="color: #ff69b4; font-size: 14px;">Create New Account</a>
+        </div>
+
+        <!-- Create Account Form -->
+        <div id="create-account-form">
+            <p class="r-modal-text">Create Your Passcode</p>
+            <input type="password" id="create-passcode" placeholder="Choose a Passcode (e.g., 123456)" required>
+            <input type="text" id="create-referral" placeholder="Upline Referral Code (Optional)" style="margin-bottom: 15px;">
+            <button class="modal-submit-btn" style="width: 100%; margin-bottom: 15px;" onclick="handleCreateAccount()">Create Account</button>
+            <a href="#" onclick="showLogin()" style="color: #ff69b4; font-size: 14px;">Already have an account? Login</a>
+        </div>
+    </div>
+</div>
+
+<!-- অ্যাক্টিভেশন মোডাল সিমুলেশন -->
+<div id="activation-modal" class="modal">
+    <div class="modal-content">
+        <h4 style="border-bottom: 2px solid #ddd; padding-bottom: 10px; color: #ff69b4;">Account Activation (৳300)</h4>
+        <p>অনুগ্রহ করে নিচের বিকাশ/নগদ নাম্বারে ৳300 টাকা সেন্ড মানি করুন।</p>
+        <p style="font-weight: bold; color: #555;">Payment Number:</p>
+        <div class="bkash-number" id="modal-payment-number">Loading...</div>
+        
+        <label for="trx-number" style="display: block; text-align: left; font-size: 14px; margin-bottom: 5px;">Your Payment Number:</label>
+        <input type="text" id="trx-number" placeholder="আপনার যে নাম্বার থেকে টাকা পাঠিয়েছেন" required>
+
+        <label for="transaction-id" style="display: block; text-align: left; font-size: 14px; margin-bottom: 5px;">Transaction ID (TrxID) সাবমিট করুন:</label>
+        <input type="text" id="transaction-id" placeholder="এখানে আপনার TrxID লিখুন" required>
+        
+        <button class="modal-submit-btn" onclick="submitActivationRequest()">
+            Submit Activation Request
+        </button>
+        <button style="background: #eee; color: #333; border: none; padding: 10px; border-radius: 8px; width: 100%;" onclick="document.getElementById('activation-modal').style.display='none'">
+            Cancel
+        </button>
+    </div>
+</div>
+
+<!-- Admin Access Modal (R বাটন) -->
+<div id="admin-access-modal" class="modal">
+    <div class="modal-content">
+        <h4 style="border-bottom: 2px solid #ddd; padding-bottom: 10px; color: #ff69b4;">Admin Access</h4>
+        <p class="r-modal-text">Enter Access Password</p>
+        
+        <input type="password" id="admin-access-pass" placeholder="Password" required>
+        
+        <button class="modal-submit-btn" onclick="checkAdminPassword()">
+            Access
+        </button>
+        <button style="background: #eee; color: #333; border: none; padding: 10px; border-radius: 8px; width: 100%;" onclick="document.getElementById('admin-access-modal').style.display='none'">
+            Cancel
+        </button>
+    </div>
+</div>
+
+
+<script>
+    // আপনার দেওয়া Firebase কনফিগারেশন
+    const firebaseConfig = {
+      apiKey: "AIzaSyCKR2KyLhJoB_qdMBpoJN5raBWDCRDEonE",
+      authDomain: "earning-7bc45.firebaseapp.com",
+      databaseURL: "https://earning-7bc45-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "earning-7bc45",
+      storageBucket: "earning-7bc45.firebasestorage.app",
+      messagingSenderId: "94413359022",
+      appId: "1:94413359022:web:db5b84117334175c7f2a3f"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = app.auth();
+    const db = app.database();
+    let currentUserId = null;
+    let currentUserData = null;
+    const APP_ROOT_URL = window.location.protocol + '//' + window.location.hostname;
+    const MIN_WITHDRAWAL = 150;
+    const ADMIN_PASS = "@redoyanRR334t";
+    const PASSPHRASE_PREFIX = "PASS_";
+
+    // ====================================================================
+    // ১. Authentication এবং Initialization
+    // ====================================================================
+
+    // ফিক্স: অ্যাপ লোড হওয়ার সাথে সাথে লগইন মোডাল দেখানো
+    document.addEventListener('DOMContentLoaded', () => {
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUserId = user.uid;
+                document.getElementById('user-uid').innerText = user.uid.substring(0, 8);
+                
+                db.ref('users/' + currentUserId).on('value', snapshot => {
+                    const userData = snapshot.val();
+                    if (userData) {
+                        currentUserData = userData;
+                        updateUI(userData);
+                        document.getElementById('login-or-create-modal').style.display = 'none';
+                    } else {
+                        // যদি ইউজার লগইন করে কিন্তু ডেটাবেসে ডেটা না থাকে
+                         if (auth.currentUser.isAnonymous) {
+                            // অ্যানোনিমাস ইউজারকে লগইন করতে হবে
+                            showLogin();
+                            document.getElementById('login-or-create-modal').style.display = 'flex';
+                         } else {
+                             // অথেনটিকেটেড ইউজার, ডেটা ইনিশিয়ালাইজ করে নেব
+                             const initialData = {
+                                email: user.email || PASSPHRASE_PREFIX + 'User',
+                                balance: 0,
+                                isActivated: false,
+                                totalReferrals: 0,
+                                totalDownlines: 0,
+                                referredBy: new URLSearchParams(window.location.search).get('ref') || null,
+                                referralCode: user.uid.substring(0, 8).toUpperCase()
+                            };
+                            db.ref('users/' + currentUserId).set(initialData);
+                        }
+                    }
+                });
+
+                // সেটিংস ডেটা লোডিং
+                db.ref('settings/bkashPaymentNumber').on('value', snapshot => {
+                    const number = snapshot.val();
+                    const displayNum = number || '01XXXXXXXXX (Admin Not Set)';
+                    document.getElementById('modal-payment-number').innerText = displayNum;
+                });
+                
+            } else {
+                // অ্যানোনিমাস লগইন শুরু করা (যাতে আমরা UID পাই)
+                auth.signInAnonymously().catch((error) => {
+                    console.error("Anonymous sign-in failed: ", error);
+                });
+            }
+        });
+    });
+
+    // ====================================================================
+    // ২. Login/Create Account Flow
+    // ====================================================================
+
+    function showLogin() {
+        document.getElementById('login-header').innerText = "Welcome Back!";
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('create-account-form').style.display = 'none';
+        document.getElementById('login-passcode').value = '';
+    }
+
+    function showCreateAccount() {
+        document.getElementById('login-header').innerText = "Create New Account";
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('create-account-form').style.display = 'block';
+        document.getElementById('create-passcode').value = '';
+        document.getElementById('create-referral').value = new URLSearchParams(window.location.search).get('ref') || ''; // URL থেকে রেফারেল কোড নেওয়া
+    }
+    
+    async function handleLogin() {
+        const passcode = document.getElementById('login-passcode').value.trim();
+        if (passcode.length < 5) {
+            alert("Please enter a valid Passcode.");
+            return;
+        }
+
+        const email = PASSPHRASE_PREFIX + passcode + "@" + APP_ROOT_URL.replace(/[^a-zA-Z0-9]/g, '') + ".com";
+        const password = PASSPHRASE_PREFIX + passcode;
+        
+        try {
+            // ইমেইল/পাসওয়ার্ড দিয়ে লগইন
+            const credential = await auth.signInWithEmailAndPassword(email, password);
+            
+            // যদি অ্যানোনিমাস ইউজার থাকে, তাকে নতুন ইউজারের সাথে লিঙ্ক করো
+            if (auth.currentUser && auth.currentUser.isAnonymous) {
+                await auth.currentUser.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email, password));
+            }
+
+            // সফল হলে মোডাল বন্ধ
+            document.getElementById('login-or-create-modal').style.display = 'none';
+            alert("Login successful!");
+            
+        } catch (error) {
+            alert("Login Failed: Passcode not found or incorrect.");
+        }
+    }
+
+    async function handleCreateAccount() {
+        const passcode = document.getElementById('create-passcode').value.trim();
+        const refCode = document.getElementById('create-referral').value.trim().toUpperCase();
+
+        if (passcode.length < 5) {
+            alert("Passcode must be at least 5 characters.");
+            return;
+        }
+
+        const email = PASSPHRASE_PREFIX + passcode + "@" + APP_ROOT_URL.replace(/[^a-zA-Z0-9]/g, '') + ".com";
+        const password = PASSPHRASE_PREFIX + passcode;
+
+        let uplineUid = null;
+        if (refCode) {
+            const snapshot = await db.ref('users').orderByChild('referralCode').equalTo(refCode).once('value');
+            if (!snapshot.exists()) {
+                alert("Upline Referral Code not found. Continuing without a link.");
+            } else {
+                uplineUid = Object.keys(snapshot.val())[0];
+            }
+        }
+        
+        try {
+            // নতুন ইউজার তৈরি
+            const credential = await auth.createUserWithEmailAndPassword(email, password);
+            
+            // ডেটা ইনিশিয়ালাইজেশন
+            const initialData = {
+                email: email,
+                balance: 0,
+                isActivated: false,
+                totalReferrals: 0,
+                totalDownlines: 0,
+                referredBy: uplineUid,
+                referralCode: credential.user.uid.substring(0, 8).toUpperCase()
+            };
+            await db.ref('users/' + credential.user.uid).set(initialData);
+
+             // যদি অ্যানোনিমাস ইউজার থাকে, তাকে নতুন ইউজারের সাথে লিঙ্ক করো
+            if (auth.currentUser && auth.currentUser.isAnonymous) {
+                await auth.currentUser.linkWithCredential(firebase.auth.EmailAuthProvider.credential(email, password));
+            }
+
+            document.getElementById('login-or-create-modal').style.display = 'none';
+            alert("Account created successfully! Welcome.");
+            
+        } catch (error) {
+            if (error.code === 'auth/email-already-in-use') {
+                 alert("Account with this Passcode already exists. Please Login.");
+                 showLogin();
+            } else {
+                 alert("Creation Error: " + error.message);
+            }
+        }
+    }
+
+
+    // ====================================================================
+    // ৩. UI/Data Logic (আগের মতো)
+    // ====================================================================
+
+    function updateUI(data) {
+        const balance = data.balance || 0; 
+        document.getElementById('user-welcome').innerText = `Welcome back, ${data.email.split('@')[0]}`;
+        document.getElementById('home-balance').innerText = `৳${balance.toFixed(2)}`;
+        document.getElementById('total-income').innerText = `৳${balance.toFixed(2)}`;
+        document.getElementById('wallet-balance').innerText = `৳${balance.toFixed(2)}`;
+        document.getElementById('ref-code').innerText = data.referralCode;
+
+        const statusDot = document.getElementById('activation-status-dot');
+        const statusText = document.getElementById('activation-status-text');
+        const activateBtn = document.getElementById('activate-btn');
+        
+        if (data.isActivated) {
+            statusDot.style.color = '#5cb85c'; 
+            statusText.innerText = 'Active';
+            activateBtn.style.display = 'none';
+        } else {
+            statusDot.style.color = '#ffcc00'; 
+            statusText.innerText = 'Inactive';
+            activateBtn.style.display = 'block';
+        }
+
+        document.getElementById('total-referrals').innerText = data.totalReferrals || 0;
+        document.getElementById('total-downlines').innerText = data.totalDownlines || 0;
+        document.getElementById('downline-balance').innerText = '৳0.00';
+    }
+
+    function showScreen(screenId, navItem) {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById(screenId).classList.add('active');
+        
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        if (navItem) {
+            navItem.classList.add('active');
+        }
+    }
+
+    function openActivationModal() {
+        if (!currentUserData) {
+            alert("Please login/create an account first.");
+            return;
+        }
+        if (currentUserData.isActivated) {
+            alert("Your account is already active!");
+            return;
+        }
+        document.getElementById('activation-modal').style.display='flex';
+    }
+    
+    // ... (submitActivationRequest, submitWithdrawalRequest, copyReferralLink, openAdminAccessModal, checkAdminPassword - একই থাকবে)
+
+    // Admin Access Modal Logic
+    function openAdminAccessModal() {
+        document.getElementById('admin-access-modal').style.display = 'flex';
+        document.getElementById('admin-access-pass').value = '';
+    }
+
+    function checkAdminPassword() {
+        const inputPass = document.getElementById('admin-access-pass').value.trim();
+        
+        if (inputPass === ADMIN_PASS) {
+            document.getElementById('admin-access-modal').style.display = 'none';
+            window.location.href = `${APP_ROOT_URL}/admin.html`;
+        } else {
+            alert("Invalid Access Password!");
+            document.getElementById('admin-access-pass').value = '';
+        }
+    }
+</script>
+
+</body>
+</html>
